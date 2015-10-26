@@ -60,16 +60,13 @@ public class AlmostHardcore extends JavaPlugin{
 	    this.getServer().setSpawnRadius(0);
 	    loadSpawnData();
 	    saveConfig();
-//	    getLogger().info(this.getServer().getWorld("world");
 	}
 	
 	@Override
 	public void onDisable() {
 		saveSpawnData();
 		saveConfig();
-//		data.writeTrackingData(this.getConfig().getString("TrackingDataFile"));
 	}
-	
 
 	public int randCoord() {
 		Random rnd = new Random();
@@ -81,6 +78,7 @@ public class AlmostHardcore extends JavaPlugin{
 		// picks a new 
 		Location randLocation = new Location(w, randCoord(), 0, randCoord());
 		return w.getHighestBlockAt(randLocation);
+		
 	}
 
 	public void newRandomWorldSpawn(World w) {
@@ -118,7 +116,6 @@ public class AlmostHardcore extends JavaPlugin{
 	}
 	
 	public void updatePlayerSpawnData(Player p, Location ploc){
-//		Location ploc = p.getLocation();
 		Integer coords[] = {ploc.getBlockX(),ploc.getBlockZ()};
 		spawnData.put(p.getUniqueId(), coords);
 		saveSpawnData();
