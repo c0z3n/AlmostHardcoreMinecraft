@@ -1,7 +1,6 @@
 package me.c0z3n;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -19,6 +18,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class AlmostHardcore extends JavaPlugin{
@@ -42,12 +42,14 @@ public class AlmostHardcore extends JavaPlugin{
 			public void onJoin(PlayerJoinEvent e) {
 				// triggered when any player joins
 				Player player = e.getPlayer();
-				if(!player.hasPlayedBefore()){
-					Location ploc = player.getLocation();
-					Integer locationCoords[] = {ploc.getBlockX(),ploc.getBlockZ()};
-					spawnData.put(player.getName(), locationCoords);
-					saveSpawnData();
+				if((spawnData.get(player.getName()) == null) || (!player.hasPlayedBefore())){
+					updatePlayerSpawnData(player, getServer().getWorlds().get(0).getSpawnLocation());
 				}
+			}
+			@EventHandler
+			public void onSpawn(PlayerRespawnEvent e) {
+				Player player = e.getPlayer();
+				updatePlayerSpawnData(player, e.getRespawnLocation());
 			}
 			
 		}, this);
@@ -97,8 +99,8 @@ public class AlmostHardcore extends JavaPlugin{
 	public boolean spawnProximityChecker(Integer a1[], Integer a2[]){
 		Arrays.sort(a1);
 		Arrays.sort(a2);
-		Integer th = 16;
-
+		Integer th = 25;
+		
 		if( (a1[0]-th <= a2[0] && a2[0] <= a1[0]+th) && (a1[1]-th) <= a2[1] && a2[1] <= (a1[1]+th) ){
 			return true;
 		}
@@ -113,18 +115,27 @@ public class AlmostHardcore extends JavaPlugin{
 		Integer currentServerSpawn[] = {worldSpawnLocation.getBlockX(),worldSpawnLocation.getBlockZ()};
 		Integer playerSpawn[] = spawnData.get(player.getName());
 		
+		
+		
 		if(spawnProximityChecker(currentServerSpawn, playerSpawn)){
-//			getLogger().info("equal");
 			newRandomWorldSpawn(this.getServer().getWorlds().get(0)); // overworld
 			newRandomWorldSpawn(this.getServer().getWorlds().get(1)); // nether
 		}
-		player.setBedSpawnLocation(worldSpawnLocation, false);
+		
+//		player.setBedSpawnLocation(worldSpawnLocation, false);
+	}
+	
+	public void updatePlayerSpawnData(Player p, Location ploc){
+//		Location ploc = p.getLocation();
+		Integer coords[] = {ploc.getBlockX(),ploc.getBlockZ()};
+		spawnData.put(p.getName(), coords);
+		saveSpawnData();
 	}
 	
 	public void loadSpawnData(){
 		FileInputStream fis;
 		try {
-			fis = new FileInputStream(this.getConfig().getString("TrackingDataFile"));
+			fis = new FileInputStream("plugins/AlmostHardcore/" + this.getConfig().getString("TrackingDataFile"));
 		    ObjectInputStream ois = new ObjectInputStream(fis);
 		    this.spawnData = (HashMap<String, Integer[]>) ois.readObject();
 		    ois.close();
@@ -137,7 +148,7 @@ public class AlmostHardcore extends JavaPlugin{
 	public void saveSpawnData(){
 		FileOutputStream fos;
 		try {
-			fos = new FileOutputStream(this.getConfig().getString("TrackingDataFile"));
+			fos = new FileOutputStream("plugins/AlmostHardcore/" + this.getConfig().getString("TrackingDataFile"));
 		    ObjectOutputStream oos = new ObjectOutputStream(fos);
 		    oos.writeObject(this.spawnData);
 		    oos.close();
