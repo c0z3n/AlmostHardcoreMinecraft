@@ -99,12 +99,8 @@ public class AlmostHardcore extends JavaPlugin{
 	public boolean spawnProximityChecker(Integer a1[], Integer a2[]){
 		Arrays.sort(a1);
 		Arrays.sort(a2);
-		Integer th = 25;
-		
-		if( (a1[0]-th <= a2[0] && a2[0] <= a1[0]+th) && (a1[1]-th) <= a2[1] && a2[1] <= (a1[1]+th) ){
-			return true;
-		}
-		if( a2[0]-th <= a1[0] && a1[0] <= a2[0]+th && a2[1]-th <= a1[1] && a1[1] <= a2[1]+th ){
+		Integer th = 25; //threshold - minecraft doesn't always spawn you EXACTLY somewhere, this is the error to allow
+		if (Math.abs(a1[0]-a2[0])<th || Math.abs(a1[1]-a2[1])<th){
 			return true;
 		}
 		return false;
