@@ -14,4 +14,4 @@ The basic implementation of this plugin was slammed together in a single evening
 
 ### Installation
 
-This is a bukkit plugin, and it should work if you compile it against your favorite bukkit api compatable .jar file and chuck it in your server /plugins directory. I'll add a .jar release to this repo when i get around to it (and it's a little more stable).
+This is a bukkit plugin, and it should work if you compile it against your favorite bukkit api compatable .jar file and chuck it in your server /plugins directory. --I'll add a .jar release to this repo when i get around to it (and it's a little more stable).-- There is a precompiled .jar file compatible with craftbukkit 1.8.8 in the [Builds/](Builds) directory.
