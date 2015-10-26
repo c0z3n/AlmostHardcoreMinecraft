@@ -8,6 +8,7 @@ import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Random;
+import java.util.UUID;
 
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -24,7 +25,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class AlmostHardcore extends JavaPlugin{
 	
 	
-	HashMap<String, Integer[]> spawnData = new HashMap<String, Integer[]>();
+	HashMap<UUID, Integer[]> spawnData = new HashMap<UUID, Integer[]>();
 	@Override
 	public void onEnable() {
 		
@@ -37,12 +38,11 @@ public class AlmostHardcore extends JavaPlugin{
 				Player player = e.getEntity();
 				updateGlobalSpawnLocation(player);
 			}
-
 			@EventHandler
 			public void onJoin(PlayerJoinEvent e) {
 				// triggered when any player joins
 				Player player = e.getPlayer();
-				if((spawnData.get(player.getName()) == null) || (!player.hasPlayedBefore())){
+				if((spawnData.get(player.getUniqueId()) == null) || (!player.hasPlayedBefore())){
 					updatePlayerSpawnData(player, getServer().getWorlds().get(0).getSpawnLocation());
 				}
 			}
@@ -113,22 +113,18 @@ public class AlmostHardcore extends JavaPlugin{
 	public void updateGlobalSpawnLocation(Player player){
 		Location worldSpawnLocation = this.getServer().getWorlds().get(0).getSpawnLocation();
 		Integer currentServerSpawn[] = {worldSpawnLocation.getBlockX(),worldSpawnLocation.getBlockZ()};
-		Integer playerSpawn[] = spawnData.get(player.getName());
-		
-		
-		
+		Integer playerSpawn[] = spawnData.get(player.getUniqueId());
 		if(spawnProximityChecker(currentServerSpawn, playerSpawn)){
 			newRandomWorldSpawn(this.getServer().getWorlds().get(0)); // overworld
 			newRandomWorldSpawn(this.getServer().getWorlds().get(1)); // nether
 		}
-		
 //		player.setBedSpawnLocation(worldSpawnLocation, false);
 	}
 	
 	public void updatePlayerSpawnData(Player p, Location ploc){
 //		Location ploc = p.getLocation();
 		Integer coords[] = {ploc.getBlockX(),ploc.getBlockZ()};
-		spawnData.put(p.getName(), coords);
+		spawnData.put(p.getUniqueId(), coords);
 		saveSpawnData();
 	}
 	
@@ -137,7 +133,7 @@ public class AlmostHardcore extends JavaPlugin{
 		try {
 			fis = new FileInputStream("plugins/AlmostHardcore/" + this.getConfig().getString("TrackingDataFile"));
 		    ObjectInputStream ois = new ObjectInputStream(fis);
-		    this.spawnData = (HashMap<String, Integer[]>) ois.readObject();
+		    this.spawnData = (HashMap<UUID, Integer[]>) ois.readObject();
 		    ois.close();
 		} catch (IOException | ClassNotFoundException e) {
 			// TODO Auto-generated catch block
