@@ -1,4 +1,4 @@
-package me.c0z3n;
+package org.c0z3n;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
