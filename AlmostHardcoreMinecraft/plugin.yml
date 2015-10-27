@@ -2,3 +2,9 @@ name: AlmostHardcore
 main: org.c0z3n.AlmostHardcore
 version: 0.1
 commands:
+    deaths:
+        description: see your number of deaths and the server total
+        usage: /<command>
+    deathboard:
+        description: print the server death scoreboard
+        usage: /<command>
