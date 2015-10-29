@@ -40,10 +40,8 @@ public class AlmostHardcore extends JavaPlugin{
 				// triggered when any player dies
 				Player player = e.getEntity();
 				updateGlobalSpawnLocation(player);
-				Integer spnum = getConfig().getInt("spawnCount."+player.getName());
-				Integer stnum = getConfig().getInt("spawnCount.death-total");
-				getConfig().set("spawnCount."+player.getName(), spnum + 1);
-				getConfig().set("spawnCount.death-total", stnum + 1);
+				Integer spnum = getConfig().getInt("deathCount."+player.getName());
+				getConfig().set("deathCount."+player.getName(), spnum + 1);
 			    saveConfig();
 			}
 			@EventHandler
@@ -51,9 +49,9 @@ public class AlmostHardcore extends JavaPlugin{
 				// triggered when any player joins
 				Player player = e.getPlayer();
 				if((spawnData.get(player.getUniqueId()) == null) || (!player.hasPlayedBefore())){
-					updatePlayerSpawnData(player, getServer().getWorlds().get(0).getSpawnLocation());
+					updatePlayerDeathData(player, getServer().getWorlds().get(0).getSpawnLocation());
 				}
-				getConfig().addDefault("spawnCount."+player.getName(), 0);
+				getConfig().addDefault("deathCount."+player.getName(), 0);
 			    saveConfig();
 				
 			}
@@ -71,16 +69,15 @@ public class AlmostHardcore extends JavaPlugin{
 					getServer().broadcastMessage(ChatColor.RED + e.getPlayer().getName() + " died and is respawning at a brand new spawn point!");
 					getServer().broadcastMessage(ChatColor.RED + "There may be some lag as the server generates new map tiles");
 				} 
-				updatePlayerSpawnData(player, e.getRespawnLocation());
+				updatePlayerDeathData(player, e.getRespawnLocation());
 			}
 			
 			
 		}, this);
-		
+
 	    this.getConfig().addDefault("RandomSpawnWindowSize", 500000);
+	    this.getConfig().addDefault("totalSpawnsGenerated", 0);
 	    this.getConfig().addDefault("TrackingDataFile", "trackingdata.dat");
-//	    this.getConfig().addDefault("spawnCount", 0);
-	    this.getConfig().addDefault("spawnCount.death-total", 0);
 	    this.getConfig().options().copyDefaults(true);
 	    this.getServer().setSpawnRadius(0);
 	    loadSpawnData();
@@ -96,23 +93,38 @@ public class AlmostHardcore extends JavaPlugin{
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
 		Player player = (Player) sender;
 		if (cmd.getName().equalsIgnoreCase("deaths") && sender instanceof Player){
-			Integer total = getConfig().getInt("spawnCount.death-total");
-			Integer spawns = getConfig().getInt("spawnCount." + player.getName());
-			player.sendMessage(ChatColor.RED + "total deaths       : " + total.toString());
+			Integer spawns = getConfig().getInt("deathCount." + player.getName());
+			Integer totalDeaths  = 0;
+			Map<String, Object> alldeaths = getConfig().getConfigurationSection("deathCount").getValues(false);
+
+			// count total deaths
+			for (Map.Entry<String, Object> entry : alldeaths.entrySet()) {
+				totalDeaths += (int) entry.getValue();
+			}
+			player.sendMessage(ChatColor.RED + "total deaths       : " + totalDeaths.toString());
 			player.sendMessage(ChatColor.RED + "your deaths        : " + spawns.toString());
 		}
 
 		if (cmd.getName().equalsIgnoreCase("deathboard") && sender instanceof Player){
-			Map<String, Object> alldeaths = getConfig().getConfigurationSection("spawnCount").getValues(false);
-			getServer().broadcastMessage(ChatColor.RED + "---DEATH SCOREBOARD----");
+			Map<String, Object> alldeaths = getConfig().getConfigurationSection("deathCount").getValues(false);
+			getServer().broadcastMessage(ChatColor.RED + "DEATH SCOREBOARD");
+			getServer().broadcastMessage("");
+			Integer totalDeaths = 0;
+			
+			// count total deaths and calculate whitespace
 			for (Map.Entry<String, Object> entry : alldeaths.entrySet()) {
 				Integer spaces = 16 - entry.getKey().length();
 				String whitespace = "";
 				for(int i = 0; i< spaces; i++){
 					whitespace = whitespace + " ";
 				}
-				getServer().broadcastMessage(ChatColor.RED + entry.getKey() + whitespace + ": " + entry.getValue());
+				getServer().broadcastMessage(ChatColor.RED + entry.getKey() + whitespace + ": " + entry.getValue().toString());
+				totalDeaths += (int) entry.getValue();
 			}
+			getServer().broadcastMessage("");
+			Integer spawnsGenerated = this.getConfig().getInt("totalSpawnsGenerated");
+			getServer().broadcastMessage(ChatColor.RED + "TOTAL DEATHS          : " + totalDeaths);
+			getServer().broadcastMessage(ChatColor.RED + "SPAWNS GENERATED      : " + spawnsGenerated);
 		}
 		
 		
@@ -161,12 +173,15 @@ public class AlmostHardcore extends JavaPlugin{
 		Integer playerSpawn[] = spawnData.get(player.getUniqueId());
 		if(spawnProximityChecker(currentServerSpawn, playerSpawn)){
 			newRandomWorldSpawn(this.getServer().getWorlds().get(0)); // overworld
-			newRandomWorldSpawn(this.getServer().getWorlds().get(1)); // nether
+//			newRandomWorldSpawn(this.getServer().getWorlds().get(1)); // nether //don't really need to do this
+			Integer spawnsGenerated = this.getConfig().getInt("totalSpawnsGenerated");
+			this.getConfig().set("totalSpawnsGenerated", spawnsGenerated + 1);
+		    saveConfig();
 		}
 //		player.setBedSpawnLocation(worldSpawnLocation, false);
 	}
 	
-	public void updatePlayerSpawnData(Player p, Location ploc){
+	public void updatePlayerDeathData(Player p, Location ploc){
 		Integer coords[] = {ploc.getBlockX(),ploc.getBlockZ()};
 		spawnData.put(p.getUniqueId(), coords);
 		saveSpawnData();
