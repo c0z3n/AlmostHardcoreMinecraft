@@ -42,6 +42,7 @@ public class AlmostHardcore extends JavaPlugin{
 				updateGlobalSpawnLocation(player);
 				Integer spnum = getConfig().getInt("deathCount."+player.getName());
 				getConfig().set("deathCount."+player.getName(), spnum + 1);
+				player.getEnderChest().clear();
 			    saveConfig();
 			}
 			@EventHandler
