@@ -98,5 +98,12 @@ public class hardcorePlayer {
     		this.recordDaysAlive = this.daysAlive;
     	}
     }
+    public hardcorePlayer(Player p){
+    	this.daysAlive = 0;
+    	this.recordDaysAlive = 0;
+    	this.id = p.getUniqueId();
+    	this.setLastSpawn(p.getWorld().getSpawnLocation());
+        this.playerName = p.getName();
+    }
 	
 }

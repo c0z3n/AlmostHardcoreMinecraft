@@ -29,51 +29,37 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class AlmostHardcore extends JavaPlugin{	
+	com.avaje.ebean.EbeanServer db;
 	
-	HashMap<UUID, Integer[]> spawnData = new HashMap<UUID, Integer[]>();
-	com.avaje.ebean.EbeanServer db = this.getDatabase();
 	@Override
 	public void onEnable() {
+
+		
+		this.loadDatabase();
+		this.db = this.getDatabase();
 		
 		// some event handlers
 		this.getServer().getPluginManager().registerEvents(new Listener(){
 
 			@EventHandler
 			public void onDie(PlayerDeathEvent e) {
-				// triggered when any player dies
 				Player player = e.getEntity();
-				updateGlobalSpawnLocation(player);
-				Integer spnum = getConfig().getInt("deathCount."+player.getName());
-				getConfig().set("deathCount."+player.getName(), spnum + 1);
+				
+
 				player.getEnderChest().clear();
 			    saveConfig();
 			}
 			@EventHandler
 			public void onJoin(PlayerJoinEvent e) {
-				// triggered when any player joins
 				Player player = e.getPlayer();
-				if((spawnData.get(player.getUniqueId()) == null) || (!player.hasPlayedBefore())){
-					updatePlayerDeathData(player, getServer().getWorlds().get(0).getSpawnLocation());
+				if(db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findRowCount() == 0){ // || (!player.hasPlayedBefore())){
+					hardcorePlayer newPlayer = new hardcorePlayer(player);
 				}
-				getConfig().addDefault("deathCount."+player.getName(), 0);
-			    saveConfig();
-				
 			}
 			@EventHandler
 			public void onSpawn(PlayerRespawnEvent e) {
 				Player player = e.getPlayer();
-				boolean newSpawn = true;
-				Integer spawnLocation[] = {e.getRespawnLocation().getBlockX(), e.getRespawnLocation().getBlockX()};
-				for (Integer v[] : spawnData.values()) {
-				    if(spawnProximityChecker(spawnLocation, v)){
-				    	newSpawn = false;
-				    }
-				}
-				if(newSpawn){
-					getServer().broadcastMessage(ChatColor.RED + e.getPlayer().getName() + " died and is respawning at a brand new spawn point!");
-					getServer().broadcastMessage(ChatColor.RED + "There may be some lag as the server generates new map tiles");
-				} 
-				updatePlayerDeathData(player, e.getRespawnLocation());
+				
 			}
 			
 			
@@ -81,7 +67,6 @@ public class AlmostHardcore extends JavaPlugin{
 
 	    this.getConfig().addDefault("RandomSpawnWindowSize", 500000);
 	    this.getConfig().addDefault("totalSpawnsGenerated", 0);
-	    this.getConfig().addDefault("TrackingDataFile", "trackingdata.dat");
 	    this.getConfig().options().copyDefaults(true);
 	    this.getServer().setSpawnRadius(0);
 	    loadSpawnData();
