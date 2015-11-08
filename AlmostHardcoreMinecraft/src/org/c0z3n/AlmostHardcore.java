@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
+import javax.persistence.PersistenceException;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -29,6 +31,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class AlmostHardcore extends JavaPlugin{	
 	
 	HashMap<UUID, Integer[]> spawnData = new HashMap<UUID, Integer[]>();
+	com.avaje.ebean.EbeanServer db = this.getDatabase();
 	@Override
 	public void onEnable() {
 		
@@ -130,6 +133,16 @@ public class AlmostHardcore extends JavaPlugin{
 		
 		
 		return false;
+	}
+	
+	private void loadDatabase() {
+		try {
+			this.getDatabase().find(hardcorePlayer.class).findRowCount();
+		}
+		catch (PersistenceException ex) {
+            System.out.println(getDescription().getName() + " is setting up database");
+            installDDL();
+        }
 	}
 
 	public int randCoord() {

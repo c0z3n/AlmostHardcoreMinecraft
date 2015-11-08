@@ -1,6 +1,9 @@
 name: AlmostHardcore
 main: org.c0z3n.AlmostHardcore
+author: c0z3n
+website: https://github.com/c0z3n
 version: 0.1
+database: true
 commands:
     deaths:
         description: see your number of deaths and the server total
