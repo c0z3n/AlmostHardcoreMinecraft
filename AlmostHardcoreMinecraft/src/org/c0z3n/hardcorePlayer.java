@@ -6,7 +6,6 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -24,86 +23,108 @@ public class hardcorePlayer {
 	@NotNull
 	private double lastSpawnX;
 	
-
 	@NotNull
 	private double lastSpawnY;
 	
-
 	@NotNull
 	private double lastSpawnZ;
 
 	@NotNull
 	private int deaths;
-
-	@NotNull
-	private int daysAlive;
 	
 	@NotNull
-	private int recordDaysAlive;
+	private int nightsAlive;
 	
-	public void setId(UUID id){
-		this.id = id;
-	}
+	@NotNull
+	private int recordNightsAlive;
 	
-	public UUID getId(){
+    public UUID getId() {
 		return id;
 	}
-	
-	public String getPlayerName(){
+
+	public void setId(UUID id) {
+		this.id = id;
+	}
+
+	public String getPlayerName() {
 		return playerName;
 	}
 
-	public Player getPlayer() {
-        return Bukkit.getServer().getPlayer(id);
+	public void setPlayerName(String playerName) {
+		this.playerName = playerName;
+	}
+
+	public double getLastSpawnX() {
+		return lastSpawnX;
+	}
+
+	public void setLastSpawnX(double lastSpawnX) {
+		this.lastSpawnX = lastSpawnX;
+	}
+
+	public double getLastSpawnY() {
+		return lastSpawnY;
+	}
+
+	public void setLastSpawnY(double lastSpawnY) {
+		this.lastSpawnY = lastSpawnY;
+	}
+
+	public double getLastSpawnZ() {
+		return lastSpawnZ;
+	}
+
+	public void setLastSpawnZ(double lastSpawnZ) {
+		this.lastSpawnZ = lastSpawnZ;
+	}
+
+	public int getDeaths() {
+		return deaths;
+	}
+
+	public void setDeaths(int deaths) {
+		this.deaths = deaths;
+	}
+
+	public int getNightsAlive() {
+		return nightsAlive;
+	}
+
+	public void setNightsAlive(int nightsAlive) {
+		this.nightsAlive = nightsAlive;
+	}
+
+	public int getRecordNightsAlive() {
+		return recordNightsAlive;
+	}
+
+	public void setRecordNightsAlive(int recordNightsAlive) {
+		this.recordNightsAlive = recordNightsAlive;
+	}
+
+	public void updateLastSpawn(Location newLastSpawn){
+    	this.setLastSpawnX(newLastSpawn.getX());
+    	this.setLastSpawnY(newLastSpawn.getY());
+    	this.setLastSpawnZ(newLastSpawn.getZ());
     }
 
-    public void setPlayer(Player player) {
-        this.id = player.getUniqueId();
-        this.playerName = player.getName();
-    }
-    
-    public int getDeaths(){
-    	return deaths;
-    }
-    
-    public void setDeaths(int deaths){
-    	this.deaths = deaths;
-    }
-    
-    public void addDeath(){
-    	this.deaths = this.deaths + 1;
-    }
-    
-    public Location getLastSpawn(){
-    	return new Location(null, lastSpawnX, lastSpawnX, lastSpawnX);
-    }
-    
-    public void setLastSpawn(Location newLastSpawn){
-    	this.lastSpawnX = newLastSpawn.getX();
-    	this.lastSpawnY = newLastSpawn.getY();
-    	this.lastSpawnZ = newLastSpawn.getZ();
-    }
-    
-    public int getDaysAlive(){
-    	return daysAlive;
-    }
-    
-    public int getRecordDaysAlive(){
-    	return recordDaysAlive;
-    }
-    
-    public void addDayAlive(){
-    	this.daysAlive = this.daysAlive + 1;
-    	if(this.daysAlive > this.recordDaysAlive){
-    		this.recordDaysAlive = this.daysAlive;
+    public void addNightAlive(){
+    	this.setNightsAlive(this.nightsAlive + 1);
+    	if(this.nightsAlive > this.recordNightsAlive){
+    		this.setRecordNightsAlive(this.nightsAlive);
     	}
     }
-    public hardcorePlayer(Player p){
-    	this.daysAlive = 0;
-    	this.recordDaysAlive = 0;
-    	this.id = p.getUniqueId();
-    	this.setLastSpawn(p.getWorld().getSpawnLocation());
-        this.playerName = p.getName();
+    public void addDeath(){
+    	this.setDeaths(this.deaths + 1);
     }
+
+	public void initializeFromPlayer(Player p) {
+    	this.nightsAlive = 0;
+    	this.recordNightsAlive = 0;
+    	this.id = p.getUniqueId();
+    	this.updateLastSpawn(p.getWorld().getSpawnLocation());
+        this.playerName = p.getName();
+		
+	}
 	
 }

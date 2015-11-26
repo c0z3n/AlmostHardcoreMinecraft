@@ -1,15 +1,12 @@
 package org.c0z3n;
 
-import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Random;
-import java.util.UUID;
 
 import javax.persistence.PersistenceException;
 
@@ -44,83 +41,70 @@ public class AlmostHardcore extends JavaPlugin{
 			@EventHandler
 			public void onDie(PlayerDeathEvent e) {
 				Player player = e.getEntity();
-				
-
+				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
+				hcp.addDeath();
+				updateGlobalSpawnLocation(player);
 				player.getEnderChest().clear();
-			    saveConfig();
+				db.save(hcp);
 			}
+			
 			@EventHandler
 			public void onJoin(PlayerJoinEvent e) {
 				Player player = e.getPlayer();
-				if(db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findRowCount() == 0){ // || (!player.hasPlayedBefore())){
-					hardcorePlayer newPlayer = new hardcorePlayer(player);
+				if(db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findRowCount() == 0){
+					hardcorePlayer newPlayer = new hardcorePlayer();
+					newPlayer.initializeFromPlayer(player);
+					db.save(newPlayer);
 				}
 			}
+			
 			@EventHandler
 			public void onSpawn(PlayerRespawnEvent e) {
 				Player player = e.getPlayer();
-				
+				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
+				hcp.updateLastSpawn(e.getRespawnLocation());
+				db.save(hcp);
 			}
-			
-			
+        
 		}, this);
 
 	    this.getConfig().addDefault("RandomSpawnWindowSize", 500000);
 	    this.getConfig().addDefault("totalSpawnsGenerated", 0);
 	    this.getConfig().options().copyDefaults(true);
 	    this.getServer().setSpawnRadius(0);
-	    loadSpawnData();
 	    saveConfig();
 	}
 	
 	@Override
 	public void onDisable() {
-		saveSpawnData();
 		saveConfig();
 	}
 	
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
 		Player player = (Player) sender;
+		
 		if (cmd.getName().equalsIgnoreCase("deaths") && sender instanceof Player){
-			Integer spawns = getConfig().getInt("deathCount." + player.getName());
-			Integer totalDeaths  = 0;
-			Map<String, Object> alldeaths = getConfig().getConfigurationSection("deathCount").getValues(false);
-
-			// count total deaths
-			for (Map.Entry<String, Object> entry : alldeaths.entrySet()) {
-				totalDeaths += (int) entry.getValue();
-			}
-			player.sendMessage(ChatColor.RED + "total deaths       : " + totalDeaths.toString());
-			player.sendMessage(ChatColor.RED + "your deaths        : " + spawns.toString());
+			player.sendMessage(ChatColor.RED + "command not implemented");
 		}
 
 		if (cmd.getName().equalsIgnoreCase("deathboard") && sender instanceof Player){
-			Map<String, Object> alldeaths = getConfig().getConfigurationSection("deathCount").getValues(false);
-			getServer().broadcastMessage(ChatColor.RED + "DEATH SCOREBOARD");
-			getServer().broadcastMessage("");
-			Integer totalDeaths = 0;
-			
-			// count total deaths and calculate whitespace
-			for (Map.Entry<String, Object> entry : alldeaths.entrySet()) {
-				Integer spaces = 16 - entry.getKey().length();
-				String whitespace = "";
-				for(int i = 0; i< spaces; i++){
-					whitespace = whitespace + " ";
-				}
-				getServer().broadcastMessage(ChatColor.RED + entry.getKey() + whitespace + ": " + entry.getValue().toString());
-				totalDeaths += (int) entry.getValue();
-			}
-			getServer().broadcastMessage("");
-			Integer spawnsGenerated = this.getConfig().getInt("totalSpawnsGenerated");
-			getServer().broadcastMessage(ChatColor.RED + "TOTAL DEATHS          : " + totalDeaths);
-			getServer().broadcastMessage(ChatColor.RED + "SPAWNS GENERATED      : " + spawnsGenerated);
+			player.sendMessage(ChatColor.RED + "command not implemented");
 		}
-		
 		
 		return false;
 	}
 	
 	private void loadDatabase() {
+		try {
+			new FileOutputStream("ebean.properties", true).close();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		try {
 			this.getDatabase().find(hardcorePlayer.class).findRowCount();
 		}
@@ -129,7 +113,16 @@ public class AlmostHardcore extends JavaPlugin{
             installDDL();
         }
 	}
+	
 
+    @Override
+    public List<Class<?>> getDatabaseClasses() {
+        List<Class<?>> list = new ArrayList<Class<?>>();
+        list.add(hardcorePlayer.class);
+        list.add(hardcoreSpawn.class);
+        return list;
+    }
+	
 	public int randCoord() {
 		Random rnd = new Random();
 		int randWindowSize = this.getConfig().getInt("RandomSpawnWindowSize");
@@ -137,7 +130,7 @@ public class AlmostHardcore extends JavaPlugin{
 	}
 	
 	public Block newRandomSurfaceBlock(World w) {	
-		// picks a new 
+		// picks a new random block at the surface of the world
 		Location randLocation = new Location(w, randCoord(), 0, randCoord());
 		return w.getHighestBlockAt(randLocation);
 		
@@ -154,6 +147,9 @@ public class AlmostHardcore extends JavaPlugin{
 			badBiome = Arrays.asList(badBiomes).contains(newCandidateSpawnBlock.getBiome());
 		}
 		w.setSpawnLocation(newSpawn.getBlockX(), newSpawn.getBlockY(), newSpawn.getBlockZ());
+		hardcoreSpawn newSpawnDatabaseEntry = new hardcoreSpawn();
+		newSpawnDatabaseEntry.initializeFromLocation(newSpawn);
+		db.save(newSpawnDatabaseEntry);
 	}
 	
 	public boolean spawnProximityChecker(Integer a1[], Integer a2[]){
@@ -161,6 +157,7 @@ public class AlmostHardcore extends JavaPlugin{
 		Arrays.sort(a2);
 		Integer th = 25; //threshold - minecraft doesn't always spawn you EXACTLY somewhere, this is the error to allow
 		if (Math.abs(a1[0]-a2[0])<th || Math.abs(a1[1]-a2[1])<th){
+			System.out.println("generating new spawn");
 			return true;
 		}
 		return false;
@@ -169,46 +166,10 @@ public class AlmostHardcore extends JavaPlugin{
 	public void updateGlobalSpawnLocation(Player player){
 		Location worldSpawnLocation = this.getServer().getWorlds().get(0).getSpawnLocation();
 		Integer currentServerSpawn[] = {worldSpawnLocation.getBlockX(),worldSpawnLocation.getBlockZ()};
-		Integer playerSpawn[] = spawnData.get(player.getUniqueId());
+		hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
+		Integer playerSpawn[] = {(int) hcp.getLastSpawnX(),(int) hcp.getLastSpawnZ()};
 		if(spawnProximityChecker(currentServerSpawn, playerSpawn)){
-			newRandomWorldSpawn(this.getServer().getWorlds().get(0)); // overworld
-//			newRandomWorldSpawn(this.getServer().getWorlds().get(1)); // nether //don't really need to do this
-			Integer spawnsGenerated = this.getConfig().getInt("totalSpawnsGenerated");
-			this.getConfig().set("totalSpawnsGenerated", spawnsGenerated + 1);
-		    saveConfig();
-		}
-//		player.setBedSpawnLocation(worldSpawnLocation, false);
-	}
-	
-	public void updatePlayerDeathData(Player p, Location ploc){
-		Integer coords[] = {ploc.getBlockX(),ploc.getBlockZ()};
-		spawnData.put(p.getUniqueId(), coords);
-		saveSpawnData();
-	}
-	
-	public void loadSpawnData(){
-		FileInputStream fis;
-		try {
-			fis = new FileInputStream("plugins/AlmostHardcore/" + this.getConfig().getString("TrackingDataFile"));
-		    ObjectInputStream ois = new ObjectInputStream(fis);
-		    this.spawnData = (HashMap<UUID, Integer[]>) ois.readObject();
-		    ois.close();
-		} catch (IOException | ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-	
-	public void saveSpawnData(){
-		FileOutputStream fos;
-		try {
-			fos = new FileOutputStream("plugins/AlmostHardcore/" + this.getConfig().getString("TrackingDataFile"));
-		    ObjectOutputStream oos = new ObjectOutputStream(fos);
-		    oos.writeObject(this.spawnData);
-		    oos.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			newRandomWorldSpawn(this.getServer().getWorlds().get(0));
 		}
 	}
 	
