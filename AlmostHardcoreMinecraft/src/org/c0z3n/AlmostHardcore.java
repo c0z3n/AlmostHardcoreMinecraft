@@ -1,8 +1,5 @@
 package org.c0z3n;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -31,7 +28,6 @@ public class AlmostHardcore extends JavaPlugin{
 	@Override
 	public void onEnable() {
 
-		
 		this.loadDatabase();
 		this.db = this.getDatabase();
 		
@@ -51,7 +47,9 @@ public class AlmostHardcore extends JavaPlugin{
 			@EventHandler
 			public void onJoin(PlayerJoinEvent e) {
 				Player player = e.getPlayer();
-				if(db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findRowCount() == 0){
+				if(db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findRowCount() == 0){ 
+					// if a player joins who isn't in our database yet, we need to create a 
+					// hardcorePlayer database object for them and save it to the database
 					hardcorePlayer newPlayer = new hardcorePlayer();
 					newPlayer.initializeFromPlayer(player);
 					db.save(newPlayer);
@@ -60,6 +58,7 @@ public class AlmostHardcore extends JavaPlugin{
 			
 			@EventHandler
 			public void onSpawn(PlayerRespawnEvent e) {
+				// things to do when a player spawns
 				Player player = e.getPlayer();
 				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
 				hcp.updateLastSpawn(e.getRespawnLocation());
@@ -77,10 +76,12 @@ public class AlmostHardcore extends JavaPlugin{
 	
 	@Override
 	public void onDisable() {
+		// what to do when the plugin is disabled (server shutting down, etc.)
 		saveConfig();
 	}
 	
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
+		//commands
 		Player player = (Player) sender;
 		
 		if (cmd.getName().equalsIgnoreCase("deaths") && sender instanceof Player){
@@ -95,16 +96,7 @@ public class AlmostHardcore extends JavaPlugin{
 	}
 	
 	private void loadDatabase() {
-		try {
-			new FileOutputStream("ebean.properties", true).close();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
+		// database boilerplate and setup
 		try {
 			this.getDatabase().find(hardcorePlayer.class).findRowCount();
 		}
@@ -116,14 +108,17 @@ public class AlmostHardcore extends JavaPlugin{
 	
 
     @Override
+    // this is basically boilerplate to make the database work right
     public List<Class<?>> getDatabaseClasses() {
         List<Class<?>> list = new ArrayList<Class<?>>();
+        // need to have a list.add(x) here for every class we want to be using in the database
         list.add(hardcorePlayer.class);
         list.add(hardcoreSpawn.class);
         return list;
     }
 	
 	public int randCoord() {
+		//new random coordinate
 		Random rnd = new Random();
 		int randWindowSize = this.getConfig().getInt("RandomSpawnWindowSize");
 		return rnd.nextInt(randWindowSize) - randWindowSize/2;	
@@ -137,7 +132,7 @@ public class AlmostHardcore extends JavaPlugin{
 	}
 
 	public void newRandomWorldSpawn(World w) {
-		//rule out some unplayable biomes
+		//generate a new random spawn location, ruling out some unplayable biomes
 		Biome[] badBiomes = {Biome.OCEAN, Biome.DEEP_OCEAN, Biome.FROZEN_OCEAN};
 		boolean badBiome = true;
 		Location newSpawn = null;
@@ -153,9 +148,12 @@ public class AlmostHardcore extends JavaPlugin{
 	}
 	
 	public boolean spawnProximityChecker(Integer a1[], Integer a2[]){
+		//compare two locations to see if they are "equal" in the context of spawn locations
+		// where a player can spawn "at" a spawn location but actually enter the world several blocks away
+		// this needs work. and we could probably do without it. there is definitely a better way.
 		Arrays.sort(a1);
 		Arrays.sort(a2);
-		Integer th = 25; //threshold - minecraft doesn't always spawn you EXACTLY somewhere, this is the error to allow
+		int th = 25; //threshold - minecraft doesn't always spawn you EXACTLY somewhere, this is the deviation to allow
 		if (Math.abs(a1[0]-a2[0])<th || Math.abs(a1[1]-a2[1])<th){
 			System.out.println("generating new spawn");
 			return true;
@@ -164,6 +162,7 @@ public class AlmostHardcore extends JavaPlugin{
 	}
 	
 	public void updateGlobalSpawnLocation(Player player){
+		//determine if we need to move the world spawn location based on who died and the do it (or don't)
 		Location worldSpawnLocation = this.getServer().getWorlds().get(0).getSpawnLocation();
 		Integer currentServerSpawn[] = {worldSpawnLocation.getBlockX(),worldSpawnLocation.getBlockZ()};
 		hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
