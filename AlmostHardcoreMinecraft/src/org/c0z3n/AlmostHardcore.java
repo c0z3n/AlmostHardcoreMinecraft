@@ -64,9 +64,7 @@ public class AlmostHardcore extends JavaPlugin{
 					// hardcorePlayer database object for them and save it to the database
 					hardcorePlayer newPlayer = new hardcorePlayer();
 					newPlayer.initializeFromPlayer(player);
-
-					int rows = db.find(hardcoreSpawn.class).findRowCount();
-					newPlayer.setLastSpawnId(rows);
+					newPlayer.setLastSpawnId(db.find(hardcoreSpawn.class).findRowCount());
 					db.save(newPlayer);
 				}
 			}
@@ -85,7 +83,6 @@ public class AlmostHardcore extends JavaPlugin{
 				// things to do when a player spawns
 				Player player = e.getPlayer();
 				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
-				hcp.updateLastSpawn(e.getRespawnLocation());
 				hcp.setLastSpawnId(db.find(hardcoreSpawn.class).findRowCount());
 				db.save(hcp);
 			}
@@ -143,7 +140,7 @@ public class AlmostHardcore extends JavaPlugin{
 			hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
 			player.sendMessage(ChatColor.RED + "you have survived for " + ChatColor.GOLD + hcp.getNightsAlive() + ChatColor.RED + " nights!");
 			player.sendMessage(ChatColor.RED + "your personal record is " + ChatColor.GOLD + hcp.getRecordNightsAlive() + ChatColor.RED + " nights.");
-			player.sendMessage(ChatColor.RED + "you have died " + ChatColor.GOLD + hcp.getRecordNightsAlive() + ChatColor.RED + " times.");
+			player.sendMessage(ChatColor.RED + "you have died " + ChatColor.GOLD + hcp.getDeaths() + ChatColor.RED + " times.");
 			return true;
 		}
 
