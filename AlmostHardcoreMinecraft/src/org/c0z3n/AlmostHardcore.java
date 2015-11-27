@@ -2,6 +2,7 @@ package org.c0z3n;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 
@@ -21,9 +22,10 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitScheduler;
 
 public class AlmostHardcore extends JavaPlugin{	
-	com.avaje.ebean.EbeanServer db;
+	private com.avaje.ebean.EbeanServer db;
 	
 	@Override
 	public void onEnable() {
@@ -39,6 +41,7 @@ public class AlmostHardcore extends JavaPlugin{
 				Player player = e.getEntity();
 				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
 				hcp.addDeath();
+				hcp.setNightsAlive(0);
 				updateGlobalSpawnLocation(player);
 				player.getEnderChest().clear();
 				db.save(hcp);
@@ -71,6 +74,36 @@ public class AlmostHardcore extends JavaPlugin{
 	    this.getConfig().addDefault("totalSpawnsGenerated", 0);
 	    this.getConfig().options().copyDefaults(true);
 	    this.getServer().setSpawnRadius(0);
+	    
+
+		long enableTime = getServer().getWorlds().get(0).getTime();
+        System.out.println("server starting at world time " + String.valueOf(enableTime) );
+        long sunriseOffset = 24000L - enableTime; // how many ticks until t=0L
+        
+        BukkitScheduler scheduler = getServer().getScheduler();
+        scheduler.scheduleSyncRepeatingTask(this, new Runnable() { // important for this to be sync, not async
+        	// this is how we schedule things to happen every day at sunrise ( time = 0L )
+            @Override
+            public void run() {
+                System.out.println("evaluating nights alive for online players");
+                Collection<? extends Player> onlinePlayers = getServer().getOnlinePlayers();
+                // at t = 0L, iterate through everyone online and add them a day alive.
+                // this is a pretty naive way of counting this, it really just counts how
+                // many sunrises a player was online for, but its still fun.
+                for (Player player : onlinePlayers){
+                	hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
+                	hcp.addNightAlive();
+        			player.sendMessage(ChatColor.GREEN + "You survived another night! that makes " + ChatColor.GOLD + String.valueOf(hcp.getNightsAlive()) + ChatColor.GREEN + " in a row!");
+        			player.sendMessage(ChatColor.GREEN + "Your record is " + ChatColor.GOLD + String.valueOf(hcp.getRecordNightsAlive()) + ChatColor.GREEN + " nights survived.");
+    				db.save(hcp);
+                }
+            }
+        }, sunriseOffset, 24000L);
+        // this might cause a compounding error if the server is on for a long long time- because the server gets all
+        // lagged up when it generates a new spawn, and it might lose ticks trying to recover from that. I'll have
+        // to do some investigation. if it does in fact lose ticks, repeating this task exactly every 24000L will cause 
+        // it to slowly drift away from sunrise a few ticks at a time.
+	    
 	    saveConfig();
 	}
 	
