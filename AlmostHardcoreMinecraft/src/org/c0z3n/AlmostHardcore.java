@@ -150,21 +150,20 @@ public class AlmostHardcore extends JavaPlugin{
         return list;
     }
 	
-	public int randCoord() {
+	private int randCoord() {
 		//new random coordinate
 		Random rnd = new Random();
 		int randWindowSize = this.getConfig().getInt("RandomSpawnWindowSize");
 		return rnd.nextInt(randWindowSize) - randWindowSize/2;	
 	}
 	
-	public Block newRandomSurfaceBlock(World w) {	
+	private Block newRandomSurfaceBlock(World w) {	
 		// picks a new random block at the surface of the world
 		Location randLocation = new Location(w, randCoord(), 0, randCoord());
 		return w.getHighestBlockAt(randLocation);
-		
 	}
 
-	public void newRandomWorldSpawn(World w) {
+	private void newRandomWorldSpawn(World w) {
 		//generate a new random spawn location, ruling out some unplayable biomes
 		Biome[] badBiomes = {Biome.OCEAN, Biome.DEEP_OCEAN, Biome.FROZEN_OCEAN};
 		boolean badBiome = true;
@@ -180,8 +179,8 @@ public class AlmostHardcore extends JavaPlugin{
 		db.save(newSpawnDatabaseEntry);
 	}
 	
-	public boolean spawnProximityChecker(Integer a1[], Integer a2[]){
-		//compare two locations to see if they are "equal" in the context of spawn locations
+	private boolean spawnProximityChecker(Integer a1[], Integer a2[]){
+		// compare two locations to see if they are "equal" in the context of spawn locations
 		// where a player can spawn "at" a spawn location but actually enter the world several blocks away
 		// this needs work. and we could probably do without it. there is definitely a better way.
 		Arrays.sort(a1);
@@ -194,7 +193,7 @@ public class AlmostHardcore extends JavaPlugin{
 		return false;
 	}
 	
-	public void updateGlobalSpawnLocation(Player player){
+	private void updateGlobalSpawnLocation(Player player){
 		//determine if we need to move the world spawn location based on who died and the do it (or don't)
 		Location worldSpawnLocation = this.getServer().getWorlds().get(0).getSpawnLocation();
 		Integer currentServerSpawn[] = {worldSpawnLocation.getBlockX(),worldSpawnLocation.getBlockZ()};
