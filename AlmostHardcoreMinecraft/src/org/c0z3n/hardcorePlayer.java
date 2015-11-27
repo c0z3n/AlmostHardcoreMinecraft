@@ -30,6 +30,9 @@ public class hardcorePlayer {
 	private double lastSpawnZ;
 
 	@NotNull
+	private int lastSpawnId;
+	
+	@NotNull
 	private int deaths;
 	
 	@NotNull
@@ -45,6 +48,15 @@ public class hardcorePlayer {
 	public void setId(UUID id) {
 		this.id = id;
 	}
+	
+	public void setLastSpawnId(int spawnId) {
+		this.lastSpawnId = spawnId;
+	}
+	
+	public int getLastSpawnId(){
+		return lastSpawnId;
+	}
+	
 
 	public String getPlayerName() {
 		return playerName;
