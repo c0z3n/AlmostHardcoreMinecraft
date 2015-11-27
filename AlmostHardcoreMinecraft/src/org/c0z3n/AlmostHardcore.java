@@ -34,7 +34,15 @@ public class AlmostHardcore extends JavaPlugin{
 		this.loadDatabase();
 		this.db = this.getDatabase();
 		
-		// some event handlers
+		if (db.find(hardcoreSpawn.class).findRowCount() <= 0){
+			// if there are no spawn locations in the spawn location database, we need to add the initial
+			// server spawn to the database as the first entry
+			hardcoreSpawn initialServerSpawn = new hardcoreSpawn();
+			initialServerSpawn.initializeFromLocation(getServer().getWorlds().get(0).getSpawnLocation());
+			db.save(initialServerSpawn);
+		} 
+		
+		// event handlers
 		this.getServer().getPluginManager().registerEvents(new Listener(){
 
 			@EventHandler
@@ -56,6 +64,7 @@ public class AlmostHardcore extends JavaPlugin{
 					// hardcorePlayer database object for them and save it to the database
 					hardcorePlayer newPlayer = new hardcorePlayer();
 					newPlayer.initializeFromPlayer(player);
+					newPlayer.setLastSpawnId(db.find(hardcoreSpawn.class).findRowCount());
 					db.save(newPlayer);
 				}
 			}
@@ -74,7 +83,7 @@ public class AlmostHardcore extends JavaPlugin{
 				// things to do when a player spawns
 				Player player = e.getPlayer();
 				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
-				hcp.updateLastSpawn(e.getRespawnLocation());
+				hcp.setLastSpawnId(db.find(hardcoreSpawn.class).findRowCount());
 				db.save(hcp);
 			}
         
@@ -85,7 +94,6 @@ public class AlmostHardcore extends JavaPlugin{
 	    this.getConfig().options().copyDefaults(true);
 	    this.getServer().setSpawnRadius(0);
 	    
-
 		long enableTime = getServer().getWorlds().get(0).getTime();
         System.out.println("server starting at world time " + String.valueOf(enableTime) );
         long sunriseOffset = 24000L - enableTime; // how many ticks until t=0L
@@ -111,8 +119,9 @@ public class AlmostHardcore extends JavaPlugin{
         }, sunriseOffset, 24000L);
         // this might cause a compounding error if the server is on for a long long time- because the server gets all
         // lagged up when it generates a new spawn, and it might lose ticks trying to recover from that. I'll have
-        // to do some investigation. if it does in fact lose ticks, repeating this task exactly every 24000L will cause 
-        // it to slowly drift away from sunrise a few ticks at a time.
+        // to do some investigation. if it does in fact lose ticks, repeating this task exactly every 24000L ticks will 
+        // cause it to slowly drift away from sunrise a few ticks at a time, since a minecraft day might not really be 
+        // exactly 24000L ticks anymore
 	    
 	    saveConfig();
 	}
@@ -131,7 +140,7 @@ public class AlmostHardcore extends JavaPlugin{
 			hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
 			player.sendMessage(ChatColor.RED + "you have survived for " + ChatColor.GOLD + hcp.getNightsAlive() + ChatColor.RED + " nights!");
 			player.sendMessage(ChatColor.RED + "your personal record is " + ChatColor.GOLD + hcp.getRecordNightsAlive() + ChatColor.RED + " nights.");
-			player.sendMessage(ChatColor.RED + "you have died " + ChatColor.GOLD + hcp.getRecordNightsAlive() + ChatColor.RED + " times.");
+			player.sendMessage(ChatColor.RED + "you have died " + ChatColor.GOLD + hcp.getDeaths() + ChatColor.RED + " times.");
 			return true;
 		}
 
@@ -170,7 +179,7 @@ public class AlmostHardcore extends JavaPlugin{
     // this is basically boilerplate to make the database work right
     public List<Class<?>> getDatabaseClasses() {
         List<Class<?>> list = new ArrayList<Class<?>>();
-        // need to have a list.add(x) here for every class we want to be using in the database
+        // need to have a list.add() here for every class we want to be using in the database
         list.add(hardcorePlayer.class);
         list.add(hardcoreSpawn.class);
         return list;
@@ -205,27 +214,9 @@ public class AlmostHardcore extends JavaPlugin{
 		db.save(newSpawnDatabaseEntry);
 	}
 	
-	private boolean spawnProximityChecker(Integer a1[], Integer a2[]){
-		// compare two locations to see if they are "equal" in the context of spawn locations
-		// where a player can spawn "at" a spawn location but actually enter the world several blocks away
-		// this needs work. and we could probably do without it. there is definitely a better way.
-		Arrays.sort(a1);
-		Arrays.sort(a2);
-		int th = 25; //threshold - minecraft doesn't always spawn you EXACTLY somewhere, this is the deviation to allow
-		if (Math.abs(a1[0]-a2[0])<th || Math.abs(a1[1]-a2[1])<th){
-			System.out.println("generating new spawn");
-			return true;
-		}
-		return false;
-	}
-	
 	private void updateGlobalSpawnLocation(Player player){
-		//determine if we need to move the world spawn location based on who died and the do it (or don't)
-		Location worldSpawnLocation = this.getServer().getWorlds().get(0).getSpawnLocation();
-		Integer currentServerSpawn[] = {worldSpawnLocation.getBlockX(),worldSpawnLocation.getBlockZ()};
 		hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
-		Integer playerSpawn[] = {(int) hcp.getLastSpawnX(),(int) hcp.getLastSpawnZ()};
-		if(spawnProximityChecker(currentServerSpawn, playerSpawn)){
+		if(hcp.getLastSpawnId() == db.find(hardcoreSpawn.class).findRowCount()){
 			newRandomWorldSpawn(this.getServer().getWorlds().get(0));
 		}
 	}
