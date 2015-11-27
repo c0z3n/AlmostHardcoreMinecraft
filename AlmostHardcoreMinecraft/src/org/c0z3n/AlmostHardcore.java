@@ -128,7 +128,11 @@ public class AlmostHardcore extends JavaPlugin{
 		Player player = (Player) sender;
 		
 		if (cmd.getName().equalsIgnoreCase("mydeaths") && sender instanceof Player){
-			player.sendMessage(ChatColor.RED + "command not implemented");
+			hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
+			player.sendMessage(ChatColor.RED + "you have survived for " + ChatColor.GOLD + hcp.getNightsAlive() + ChatColor.RED + " nights!");
+			player.sendMessage(ChatColor.RED + "your personal record is " + ChatColor.GOLD + hcp.getRecordNightsAlive() + ChatColor.RED + " nights.");
+			player.sendMessage(ChatColor.RED + "you have died " + ChatColor.GOLD + hcp.getRecordNightsAlive() + ChatColor.RED + " times.");
+			return true;
 		}
 
 		if (cmd.getName().equalsIgnoreCase("deaths") && sender instanceof Player){
@@ -144,6 +148,7 @@ public class AlmostHardcore extends JavaPlugin{
 				}
 				getServer().broadcastMessage(ChatColor.RED + hcp.getPlayerName() + whitespace + "|   " + hcp.getDeaths() + "   |   " + hcp.getNightsAlive() + "   |   " + hcp.getRecordNightsAlive());
 			}
+			return true;
 		}
 		
 		return false;
