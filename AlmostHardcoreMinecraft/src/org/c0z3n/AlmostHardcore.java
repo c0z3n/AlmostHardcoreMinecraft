@@ -19,6 +19,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -46,7 +47,7 @@ public class AlmostHardcore extends JavaPlugin{
 				player.getEnderChest().clear();
 				db.save(hcp);
 			}
-			
+
 			@EventHandler
 			public void onJoin(PlayerJoinEvent e) {
 				Player player = e.getPlayer();
@@ -57,6 +58,15 @@ public class AlmostHardcore extends JavaPlugin{
 					newPlayer.initializeFromPlayer(player);
 					db.save(newPlayer);
 				}
+			}
+
+			@EventHandler
+			public void onSleepAttempt(PlayerBedEnterEvent e) {
+				// beds ruin both the spawning mechanic we want to create and
+				// also the timekeeping/counting nights code, so i'm completely
+				// neutering them. maybe someday I will slightly de-neuter them.
+				// I doubt it.
+				e.setCancelled(true);
 			}
 			
 			@EventHandler
