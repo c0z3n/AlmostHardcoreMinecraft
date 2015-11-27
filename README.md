@@ -10,7 +10,7 @@ Currently, this plugin basically just manages the world spawn points. it's behav
 
 The result is that no player will spawn at the same place twice, but players may end up spawning at the same location and running into each other. 
 
-there are also commands `/deaths` and `/deathboard` which display your total deaths and all players total deaths, respectively 
+there are also commands `/mydeaths` and `/deaths` which display your total deaths and all players total deaths, respectively 
 
 The basic implementation of this plugin was slammed together in a single evening, so there's probably a lot wrong with it. I plan to keep updating it as I run it on a small server and we see how it plays. check out the [issues](https://github.com/c0z3n/AlmostHardcoreMinecraft/issues) to see some stuff that I plan on working on, or feel free to submit your own issues for ideas, suggestions, or bugs. Let me know if you try it with your friends, I'd love to hear about it.
 

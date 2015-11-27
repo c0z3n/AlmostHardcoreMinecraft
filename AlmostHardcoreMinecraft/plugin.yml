@@ -5,9 +5,9 @@ website: https://github.com/c0z3n
 version: 0.1
 database: true
 commands:
-    deaths:
+    mydeaths:
         description: see your number of deaths and the server total
         usage: /<command>
-    deathboard:
+    deaths:
         description: print the server death scoreboard
         usage: /<command>

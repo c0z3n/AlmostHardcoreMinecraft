@@ -127,12 +127,23 @@ public class AlmostHardcore extends JavaPlugin{
 		//commands
 		Player player = (Player) sender;
 		
-		if (cmd.getName().equalsIgnoreCase("deaths") && sender instanceof Player){
+		if (cmd.getName().equalsIgnoreCase("mydeaths") && sender instanceof Player){
 			player.sendMessage(ChatColor.RED + "command not implemented");
 		}
 
-		if (cmd.getName().equalsIgnoreCase("deathboard") && sender instanceof Player){
-			player.sendMessage(ChatColor.RED + "command not implemented");
+		if (cmd.getName().equalsIgnoreCase("deaths") && sender instanceof Player){
+			List<hardcorePlayer> allPlayersFromDb = db.find(hardcorePlayer.class).findList();
+			getServer().broadcastMessage(ChatColor.DARK_RED + "Player   |  total  |   nights   | most nights ");
+			getServer().broadcastMessage(ChatColor.DARK_RED + " name    | deaths | survived |   survived  ");
+			getServer().broadcastMessage(ChatColor.DARK_RED + "--------------------------------------------");
+			for (hardcorePlayer hcp : allPlayersFromDb){
+				Integer spaces = 16 - hcp.getPlayerName().length();
+				String whitespace = "";
+				for(int i = 0; i< spaces; i++){
+					whitespace = whitespace + " ";
+				}
+				getServer().broadcastMessage(ChatColor.RED + hcp.getPlayerName() + whitespace + "|   " + hcp.getDeaths() + "   |   " + hcp.getNightsAlive() + "   |   " + hcp.getRecordNightsAlive());
+			}
 		}
 		
 		return false;
