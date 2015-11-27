@@ -1,15 +1,12 @@
 package org.c0z3n;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collection;
+import java.util.List;
 import java.util.Random;
-import java.util.UUID;
+
+import javax.persistence.PersistenceException;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -22,131 +19,178 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitScheduler;
 
 public class AlmostHardcore extends JavaPlugin{	
+	private com.avaje.ebean.EbeanServer db;
 	
-	HashMap<UUID, Integer[]> spawnData = new HashMap<UUID, Integer[]>();
 	@Override
 	public void onEnable() {
+
+		this.loadDatabase();
+		this.db = this.getDatabase();
 		
 		// some event handlers
 		this.getServer().getPluginManager().registerEvents(new Listener(){
 
 			@EventHandler
 			public void onDie(PlayerDeathEvent e) {
-				// triggered when any player dies
 				Player player = e.getEntity();
+				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
+				hcp.addDeath();
+				hcp.setNightsAlive(0);
 				updateGlobalSpawnLocation(player);
-				Integer spnum = getConfig().getInt("deathCount."+player.getName());
-				getConfig().set("deathCount."+player.getName(), spnum + 1);
 				player.getEnderChest().clear();
-			    saveConfig();
+				db.save(hcp);
 			}
+
 			@EventHandler
 			public void onJoin(PlayerJoinEvent e) {
-				// triggered when any player joins
 				Player player = e.getPlayer();
-				if((spawnData.get(player.getUniqueId()) == null) || (!player.hasPlayedBefore())){
-					updatePlayerDeathData(player, getServer().getWorlds().get(0).getSpawnLocation());
+				if(db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findRowCount() == 0){ 
+					// if a player joins who isn't in our database yet, we need to create a 
+					// hardcorePlayer database object for them and save it to the database
+					hardcorePlayer newPlayer = new hardcorePlayer();
+					newPlayer.initializeFromPlayer(player);
+					db.save(newPlayer);
 				}
-				getConfig().addDefault("deathCount."+player.getName(), 0);
-			    saveConfig();
-				
 			}
+
+			@EventHandler
+			public void onSleepAttempt(PlayerBedEnterEvent e) {
+				// beds ruin both the spawning mechanic we want to create and
+				// also the timekeeping/counting nights code, so i'm completely
+				// neutering them. maybe someday I will slightly de-neuter them.
+				// I doubt it.
+				e.setCancelled(true);
+			}
+			
 			@EventHandler
 			public void onSpawn(PlayerRespawnEvent e) {
+				// things to do when a player spawns
 				Player player = e.getPlayer();
-				boolean newSpawn = true;
-				Integer spawnLocation[] = {e.getRespawnLocation().getBlockX(), e.getRespawnLocation().getBlockX()};
-				for (Integer v[] : spawnData.values()) {
-				    if(spawnProximityChecker(spawnLocation, v)){
-				    	newSpawn = false;
-				    }
-				}
-				if(newSpawn){
-					getServer().broadcastMessage(ChatColor.RED + e.getPlayer().getName() + " died and is respawning at a brand new spawn point!");
-					getServer().broadcastMessage(ChatColor.RED + "There may be some lag as the server generates new map tiles");
-				} 
-				updatePlayerDeathData(player, e.getRespawnLocation());
+				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
+				hcp.updateLastSpawn(e.getRespawnLocation());
+				db.save(hcp);
 			}
-			
-			
+        
 		}, this);
 
 	    this.getConfig().addDefault("RandomSpawnWindowSize", 500000);
 	    this.getConfig().addDefault("totalSpawnsGenerated", 0);
-	    this.getConfig().addDefault("TrackingDataFile", "trackingdata.dat");
 	    this.getConfig().options().copyDefaults(true);
 	    this.getServer().setSpawnRadius(0);
-	    loadSpawnData();
+	    
+
+		long enableTime = getServer().getWorlds().get(0).getTime();
+        System.out.println("server starting at world time " + String.valueOf(enableTime) );
+        long sunriseOffset = 24000L - enableTime; // how many ticks until t=0L
+        
+        BukkitScheduler scheduler = getServer().getScheduler();
+        scheduler.scheduleSyncRepeatingTask(this, new Runnable() { // important for this to be sync, not async
+        	// this is how we schedule things to happen every day at sunrise ( time = 0L )
+            @Override
+            public void run() {
+                System.out.println("evaluating nights alive for online players");
+                Collection<? extends Player> onlinePlayers = getServer().getOnlinePlayers();
+                // at t = 0L, iterate through everyone online and add them a day alive.
+                // this is a pretty naive way of counting this, it really just counts how
+                // many sunrises a player was online for, but its still fun.
+                for (Player player : onlinePlayers){
+                	hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
+                	hcp.addNightAlive();
+        			player.sendMessage(ChatColor.GREEN + "You survived another night! that makes " + ChatColor.GOLD + String.valueOf(hcp.getNightsAlive()) + ChatColor.GREEN + " in a row!");
+        			player.sendMessage(ChatColor.GREEN + "Your record is " + ChatColor.GOLD + String.valueOf(hcp.getRecordNightsAlive()) + ChatColor.GREEN + " nights survived.");
+    				db.save(hcp);
+                }
+            }
+        }, sunriseOffset, 24000L);
+        // this might cause a compounding error if the server is on for a long long time- because the server gets all
+        // lagged up when it generates a new spawn, and it might lose ticks trying to recover from that. I'll have
+        // to do some investigation. if it does in fact lose ticks, repeating this task exactly every 24000L will cause 
+        // it to slowly drift away from sunrise a few ticks at a time.
+	    
 	    saveConfig();
 	}
 	
 	@Override
 	public void onDisable() {
-		saveSpawnData();
+		// what to do when the plugin is disabled (server shutting down, etc.)
 		saveConfig();
 	}
 	
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
+		//commands
 		Player player = (Player) sender;
-		if (cmd.getName().equalsIgnoreCase("deaths") && sender instanceof Player){
-			Integer spawns = getConfig().getInt("deathCount." + player.getName());
-			Integer totalDeaths  = 0;
-			Map<String, Object> alldeaths = getConfig().getConfigurationSection("deathCount").getValues(false);
-
-			// count total deaths
-			for (Map.Entry<String, Object> entry : alldeaths.entrySet()) {
-				totalDeaths += (int) entry.getValue();
-			}
-			player.sendMessage(ChatColor.RED + "total deaths       : " + totalDeaths.toString());
-			player.sendMessage(ChatColor.RED + "your deaths        : " + spawns.toString());
+		
+		if (cmd.getName().equalsIgnoreCase("mydeaths") && sender instanceof Player){
+			hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
+			player.sendMessage(ChatColor.RED + "you have survived for " + ChatColor.GOLD + hcp.getNightsAlive() + ChatColor.RED + " nights!");
+			player.sendMessage(ChatColor.RED + "your personal record is " + ChatColor.GOLD + hcp.getRecordNightsAlive() + ChatColor.RED + " nights.");
+			player.sendMessage(ChatColor.RED + "you have died " + ChatColor.GOLD + hcp.getRecordNightsAlive() + ChatColor.RED + " times.");
+			return true;
 		}
 
-		if (cmd.getName().equalsIgnoreCase("deathboard") && sender instanceof Player){
-			Map<String, Object> alldeaths = getConfig().getConfigurationSection("deathCount").getValues(false);
-			getServer().broadcastMessage(ChatColor.RED + "DEATH SCOREBOARD");
-			getServer().broadcastMessage("");
-			Integer totalDeaths = 0;
-			
-			// count total deaths and calculate whitespace
-			for (Map.Entry<String, Object> entry : alldeaths.entrySet()) {
-				Integer spaces = 16 - entry.getKey().length();
+		if (cmd.getName().equalsIgnoreCase("deaths") && sender instanceof Player){
+			List<hardcorePlayer> allPlayersFromDb = db.find(hardcorePlayer.class).findList();
+			getServer().broadcastMessage(ChatColor.DARK_RED + "Player   |  total  |   nights   | most nights ");
+			getServer().broadcastMessage(ChatColor.DARK_RED + " name    | deaths | survived |   survived  ");
+			getServer().broadcastMessage(ChatColor.DARK_RED + "--------------------------------------------");
+			for (hardcorePlayer hcp : allPlayersFromDb){
+				Integer spaces = 16 - hcp.getPlayerName().length();
 				String whitespace = "";
 				for(int i = 0; i< spaces; i++){
 					whitespace = whitespace + " ";
 				}
-				getServer().broadcastMessage(ChatColor.RED + entry.getKey() + whitespace + ": " + entry.getValue().toString());
-				totalDeaths += (int) entry.getValue();
+				getServer().broadcastMessage(ChatColor.RED + hcp.getPlayerName() + whitespace + "|   " + hcp.getDeaths() + "   |   " + hcp.getNightsAlive() + "   |   " + hcp.getRecordNightsAlive());
 			}
-			getServer().broadcastMessage("");
-			Integer spawnsGenerated = this.getConfig().getInt("totalSpawnsGenerated");
-			getServer().broadcastMessage(ChatColor.RED + "TOTAL DEATHS          : " + totalDeaths);
-			getServer().broadcastMessage(ChatColor.RED + "SPAWNS GENERATED      : " + spawnsGenerated);
+			return true;
 		}
-		
 		
 		return false;
 	}
+	
+	private void loadDatabase() {
+		// database boilerplate and setup
+		try {
+			this.getDatabase().find(hardcorePlayer.class).findRowCount();
+		}
+		catch (PersistenceException ex) {
+            System.out.println(getDescription().getName() + " is setting up database");
+            installDDL();
+        }
+	}
+	
 
-	public int randCoord() {
+    @Override
+    // this is basically boilerplate to make the database work right
+    public List<Class<?>> getDatabaseClasses() {
+        List<Class<?>> list = new ArrayList<Class<?>>();
+        // need to have a list.add(x) here for every class we want to be using in the database
+        list.add(hardcorePlayer.class);
+        list.add(hardcoreSpawn.class);
+        return list;
+    }
+	
+	private int randCoord() {
+		//new random coordinate
 		Random rnd = new Random();
 		int randWindowSize = this.getConfig().getInt("RandomSpawnWindowSize");
 		return rnd.nextInt(randWindowSize) - randWindowSize/2;	
 	}
 	
-	public Block newRandomSurfaceBlock(World w) {	
-		// picks a new 
+	private Block newRandomSurfaceBlock(World w) {	
+		// picks a new random block at the surface of the world
 		Location randLocation = new Location(w, randCoord(), 0, randCoord());
 		return w.getHighestBlockAt(randLocation);
-		
 	}
 
-	public void newRandomWorldSpawn(World w) {
-		//rule out some unplayable biomes
+	private void newRandomWorldSpawn(World w) {
+		//generate a new random spawn location, ruling out some unplayable biomes
 		Biome[] badBiomes = {Biome.OCEAN, Biome.DEEP_OCEAN, Biome.FROZEN_OCEAN};
 		boolean badBiome = true;
 		Location newSpawn = null;
@@ -156,61 +200,33 @@ public class AlmostHardcore extends JavaPlugin{
 			badBiome = Arrays.asList(badBiomes).contains(newCandidateSpawnBlock.getBiome());
 		}
 		w.setSpawnLocation(newSpawn.getBlockX(), newSpawn.getBlockY(), newSpawn.getBlockZ());
+		hardcoreSpawn newSpawnDatabaseEntry = new hardcoreSpawn();
+		newSpawnDatabaseEntry.initializeFromLocation(newSpawn);
+		db.save(newSpawnDatabaseEntry);
 	}
 	
-	public boolean spawnProximityChecker(Integer a1[], Integer a2[]){
+	private boolean spawnProximityChecker(Integer a1[], Integer a2[]){
+		// compare two locations to see if they are "equal" in the context of spawn locations
+		// where a player can spawn "at" a spawn location but actually enter the world several blocks away
+		// this needs work. and we could probably do without it. there is definitely a better way.
 		Arrays.sort(a1);
 		Arrays.sort(a2);
-		Integer th = 25; //threshold - minecraft doesn't always spawn you EXACTLY somewhere, this is the error to allow
+		int th = 25; //threshold - minecraft doesn't always spawn you EXACTLY somewhere, this is the deviation to allow
 		if (Math.abs(a1[0]-a2[0])<th || Math.abs(a1[1]-a2[1])<th){
+			System.out.println("generating new spawn");
 			return true;
 		}
 		return false;
 	}
 	
-	public void updateGlobalSpawnLocation(Player player){
+	private void updateGlobalSpawnLocation(Player player){
+		//determine if we need to move the world spawn location based on who died and the do it (or don't)
 		Location worldSpawnLocation = this.getServer().getWorlds().get(0).getSpawnLocation();
 		Integer currentServerSpawn[] = {worldSpawnLocation.getBlockX(),worldSpawnLocation.getBlockZ()};
-		Integer playerSpawn[] = spawnData.get(player.getUniqueId());
+		hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
+		Integer playerSpawn[] = {(int) hcp.getLastSpawnX(),(int) hcp.getLastSpawnZ()};
 		if(spawnProximityChecker(currentServerSpawn, playerSpawn)){
-			newRandomWorldSpawn(this.getServer().getWorlds().get(0)); // overworld
-//			newRandomWorldSpawn(this.getServer().getWorlds().get(1)); // nether //don't really need to do this
-			Integer spawnsGenerated = this.getConfig().getInt("totalSpawnsGenerated");
-			this.getConfig().set("totalSpawnsGenerated", spawnsGenerated + 1);
-		    saveConfig();
-		}
-//		player.setBedSpawnLocation(worldSpawnLocation, false);
-	}
-	
-	public void updatePlayerDeathData(Player p, Location ploc){
-		Integer coords[] = {ploc.getBlockX(),ploc.getBlockZ()};
-		spawnData.put(p.getUniqueId(), coords);
-		saveSpawnData();
-	}
-	
-	public void loadSpawnData(){
-		FileInputStream fis;
-		try {
-			fis = new FileInputStream("plugins/AlmostHardcore/" + this.getConfig().getString("TrackingDataFile"));
-		    ObjectInputStream ois = new ObjectInputStream(fis);
-		    this.spawnData = (HashMap<UUID, Integer[]>) ois.readObject();
-		    ois.close();
-		} catch (IOException | ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-	
-	public void saveSpawnData(){
-		FileOutputStream fos;
-		try {
-			fos = new FileOutputStream("plugins/AlmostHardcore/" + this.getConfig().getString("TrackingDataFile"));
-		    ObjectOutputStream oos = new ObjectOutputStream(fos);
-		    oos.writeObject(this.spawnData);
-		    oos.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			newRandomWorldSpawn(this.getServer().getWorlds().get(0));
 		}
 	}
 	
