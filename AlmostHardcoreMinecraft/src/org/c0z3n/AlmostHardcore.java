@@ -10,6 +10,7 @@ import javax.persistence.PersistenceException;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
@@ -18,6 +19,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -77,7 +80,7 @@ public class AlmostHardcore extends JavaPlugin{
 				// I doubt it.
 				e.setCancelled(true);
 			}
-			
+
 			@EventHandler
 			public void onSpawn(PlayerRespawnEvent e) {
 				// things to do when a player spawns
@@ -85,6 +88,23 @@ public class AlmostHardcore extends JavaPlugin{
 				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
 				hcp.setLastSpawnId(db.find(hardcoreSpawn.class).findRowCount());
 				db.save(hcp);
+			}
+			
+			@EventHandler
+			public void onBlockPlace(BlockPlaceEvent e) {
+				if ( e.getBlockPlaced().getType() == Material.ENDER_CHEST){
+					hardcoreEnderChest newEndChest = new hardcoreEnderChest();
+					newEndChest.initFromPlaceEvent(e);
+					db.save(newEndChest);
+				}
+			}
+			
+			@EventHandler
+			public void onBlockBreak(BlockBreakEvent e) {
+				if ( e.getBlock().getType() == Material.ENDER_CHEST){
+					hardcoreEnderChest endChest = db.find(hardcoreEnderChest.class).where().eq("x", e.getBlock().getX()).eq("y", e.getBlock().getY()).eq("z", e.getBlock().getZ()).findUnique();
+					db.delete(endChest);
+				}
 			}
         
 		}, this);
@@ -182,6 +202,7 @@ public class AlmostHardcore extends JavaPlugin{
         // need to have a list.add() here for every class we want to be using in the database
         list.add(hardcorePlayer.class);
         list.add(hardcoreSpawn.class);
+        list.add(hardcoreEnderChest.class);
         return list;
     }
 	
