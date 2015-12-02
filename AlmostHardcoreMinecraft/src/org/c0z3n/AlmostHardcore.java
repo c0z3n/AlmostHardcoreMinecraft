@@ -34,6 +34,8 @@ import org.bukkit.scheduler.BukkitScheduler;
 
 public class AlmostHardcore extends JavaPlugin{	
 	private com.avaje.ebean.EbeanServer db;
+
+	Random rnd = new Random();
 	
 	@Override
 	public void onEnable() {
@@ -60,12 +62,13 @@ public class AlmostHardcore extends JavaPlugin{
 				hcp.setNightsAlive(0);
 //				updateGlobalSpawnLocation(player);
 				ItemStack[] endChestInv = player.getEnderChest().getContents();
-				int numEnderChests = db.find(hardcoreEnderChest.class).where().eq("owner", player.getUniqueId()).findRowCount();
 				List<hardcoreEnderChest> enderChestList = db.find(hardcoreEnderChest.class).where().eq("owner", player.getUniqueId()).findList();
-				ItemStack[][] chunkedEndChestInv = splitInventory(endChestInv, numEnderChests);
-				int idx = 0;
+				hardcoreEnderChest[] enderChestArray = enderChestList.toArray(new hardcoreEnderChest[enderChestList.size()]);
+
+            	World world = getServer().getWorlds().get(0);
+            	
                 for (hardcoreEnderChest endChest : enderChestList){
-                	World world = getServer().getWorlds().get(0);
+                	// turn all ender chests into regular chests
                     int bX = (int)endChest.getX();
                 	int bY = (int)endChest.getY();
                 	int bZ = (int)endChest.getZ();
@@ -74,18 +77,26 @@ public class AlmostHardcore extends JavaPlugin{
                 	if(world.getBlockAt(bX + 1, bY, bZ).getType() != Material.CHEST && world.getBlockAt(bX - 1, bY, bZ).getType() != Material.CHEST && world.getBlockAt(bX, bY, bZ + 1).getType() != Material.CHEST && world.getBlockAt(bX, bY, bZ - 1).getType() != Material.CHEST){
                 		convertToMaterial = Material.CHEST;
                 	}
+                	chestBlock.breakNaturally(null);
                 	chestBlock.setType(convertToMaterial);
-                	
-                	Block newChestBlock = world.getBlockAt(bX,bY,bZ);
-                    if(newChestBlock.getState() instanceof Chest){
-                        Chest chest = (Chest) newChestBlock.getState();
-                        Inventory chestInv = chest.getInventory();
-//                        chestInv.setContents(chunkedEndChestInv[idx]);
-                        chestInv.setContents(endChestInv);
-                    }
-                    db.delete(endChest);
-                	idx = idx + 1;
                 }
+                
+                for (ItemStack item : endChestInv){
+                	int chosenChestIdx = rnd.nextInt(enderChestArray.length);
+                	hardcoreEnderChest endChest = enderChestArray[chosenChestIdx];
+                    int bX = (int)endChest.getX();
+                	int bY = (int)endChest.getY();
+                	int bZ = (int)endChest.getZ();
+                	Block chestBlock = world.getBlockAt(bX,bY,bZ);
+                	Chest chest = (Chest) chestBlock.getState();
+                	Inventory chestInv = chest.getInventory();
+                	chestInv.addItem(item);
+                }
+                
+                for (hardcoreEnderChest endChest : enderChestList){
+                	db.delete(endChest);
+                }
+                
 				player.getEnderChest().clear();
 				db.save(hcp);
 			}
@@ -236,27 +247,9 @@ public class AlmostHardcore extends JavaPlugin{
         list.add(hardcoreEnderChest.class);
         return list;
     }
-    
-    private ItemStack[][] splitInventory(ItemStack[] inventory, int numChunks) {
-    	
-        int chunkSize = (int)Math.ceil((double)inventory.length / numChunks);
-        ItemStack[][] output = new ItemStack[numChunks][];
-
-        for(int i = 0; i < numChunks; ++i) {
-            int start = i * chunkSize;
-            int length = Math.min(inventory.length - start, chunkSize);
-
-            ItemStack[] temp = new ItemStack[length];
-            System.arraycopy(inventory, start, temp, 0, length);
-            output[i] = temp;
-        }
-
-        return output;
-    }
 	
 	private int randCoord() {
 		//new random coordinate
-		Random rnd = new Random();
 		int randWindowSize = this.getConfig().getInt("RandomSpawnWindowSize");
 		return rnd.nextInt(randWindowSize) - randWindowSize/2;	
 	}
