@@ -60,7 +60,7 @@ public class AlmostHardcore extends JavaPlugin{
 				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
 				hcp.addDeath();
 				hcp.setNightsAlive(0);
-//				updateGlobalSpawnLocation(player);
+				updateGlobalSpawnLocation(player);
 				ItemStack[] endChestInv = player.getEnderChest().getContents();
 				List<hardcoreEnderChest> enderChestList = db.find(hardcoreEnderChest.class).where().eq("owner", player.getUniqueId()).findList();
 				hardcoreEnderChest[] enderChestArray = enderChestList.toArray(new hardcoreEnderChest[enderChestList.size()]);
