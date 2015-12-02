@@ -33,6 +33,17 @@ public class hardcoreEnderChest {
 	@NotNull
 	private double z;
 	
+	@NotNull
+	private String world;
+
+	public String getWorld() {
+		return world;
+	}
+
+	public void setWorld(String world) {
+		this.world = world;
+	}
+
 	public int getId() {
 		return id;
 	}
@@ -84,6 +95,7 @@ public class hardcoreEnderChest {
 		this.x = e.getBlock().getX();
 		this.y = e.getBlock().getY();
 		this.z = e.getBlock().getZ();
+		this.world = e.getBlock().getWorld().getName();
 	}
 
 }

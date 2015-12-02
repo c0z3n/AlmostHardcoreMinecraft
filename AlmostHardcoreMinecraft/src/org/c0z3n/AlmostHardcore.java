@@ -60,15 +60,15 @@ public class AlmostHardcore extends JavaPlugin{
 				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
 				hcp.addDeath();
 				hcp.setNightsAlive(0);
-				updateGlobalSpawnLocation(player);
+//				updateGlobalSpawnLocation(player);
 				ItemStack[] endChestInv = player.getEnderChest().getContents();
 				List<hardcoreEnderChest> enderChestList = db.find(hardcoreEnderChest.class).where().eq("owner", player.getUniqueId()).findList();
 				hardcoreEnderChest[] enderChestArray = enderChestList.toArray(new hardcoreEnderChest[enderChestList.size()]);
 
-            	World world = getServer().getWorlds().get(0);
             	
                 for (hardcoreEnderChest endChest : enderChestArray){
                 	// turn all ender chests into regular chests
+                	World world = getServer().getWorld(endChest.getWorld());
                     int bX = (int)endChest.getX();
                 	int bY = (int)endChest.getY();
                 	int bZ = (int)endChest.getZ();
@@ -86,6 +86,7 @@ public class AlmostHardcore extends JavaPlugin{
                 	if (item != null){
 	                	int chosenChestIdx = rnd.nextInt(enderChestArray.length);
 	                	hardcoreEnderChest endChest = enderChestArray[chosenChestIdx];
+	                	World world = getServer().getWorld(endChest.getWorld());
 	                	Chest chest = (Chest) world.getBlockAt((int)endChest.getX(),(int)endChest.getY(),(int)endChest.getZ()).getState();
 	                	Inventory chestInv = chest.getInventory();
 	                	chestInv.addItem(item);
