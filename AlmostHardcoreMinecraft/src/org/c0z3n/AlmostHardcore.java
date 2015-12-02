@@ -61,44 +61,7 @@ public class AlmostHardcore extends JavaPlugin{
 				hcp.addDeath();
 				hcp.setNightsAlive(0);
 				updateGlobalSpawnLocation(player);
-				ItemStack[] endChestInv = player.getEnderChest().getContents();
-				List<hardcoreEnderChest> enderChestList = db.find(hardcoreEnderChest.class).where().eq("owner", player.getUniqueId()).findList();
-				hardcoreEnderChest[] enderChestArray = enderChestList.toArray(new hardcoreEnderChest[enderChestList.size()]);
-
-            	
-                for (hardcoreEnderChest endChest : enderChestArray){
-                	// turn all ender chests into regular chests
-                	World world = getServer().getWorld(endChest.getWorld());
-                    int bX = (int)endChest.getX();
-                	int bY = (int)endChest.getY();
-                	int bZ = (int)endChest.getZ();
-                	Block chestBlock = world.getBlockAt(bX,bY,bZ);
-                	Material convertToMaterial = Material.TRAPPED_CHEST;
-                	if(world.getBlockAt(bX + 1, bY, bZ).getType() != Material.CHEST && world.getBlockAt(bX - 1, bY, bZ).getType() != Material.CHEST && world.getBlockAt(bX, bY, bZ + 1).getType() != Material.CHEST && world.getBlockAt(bX, bY, bZ - 1).getType() != Material.CHEST){
-                		convertToMaterial = Material.CHEST;
-                	}
-                	chestBlock.breakNaturally(null);
-                	chestBlock.setType(convertToMaterial);
-                }
-                
-                for (ItemStack item : endChestInv){
-                	// place each item from the player's end chest into one of the new chests at random
-                	if (item != null){
-	                	int chosenChestIdx = rnd.nextInt(enderChestArray.length);
-	                	hardcoreEnderChest endChest = enderChestArray[chosenChestIdx];
-	                	World world = getServer().getWorld(endChest.getWorld());
-	                	Chest chest = (Chest) world.getBlockAt((int)endChest.getX(),(int)endChest.getY(),(int)endChest.getZ()).getState();
-	                	Inventory chestInv = chest.getInventory();
-	                	chestInv.addItem(item);
-                	}
-                }
-                
-                for (hardcoreEnderChest endChest : enderChestList){
-                	// delete the old end chests from the database
-                	db.delete(endChest);
-                }
-                
-				player.getEnderChest().clear();
+				decomissionEnderChests(player);
 				db.save(hcp);
 			}
 
@@ -185,7 +148,6 @@ public class AlmostHardcore extends JavaPlugin{
         // to do some investigation. if it does in fact lose ticks, repeating this task exactly every 24000L ticks will 
         // cause it to slowly drift away from sunrise a few ticks at a time, since a minecraft day might not really be 
         // exactly 24000L ticks anymore
-	    
 	    saveConfig();
 	}
 	
@@ -225,18 +187,6 @@ public class AlmostHardcore extends JavaPlugin{
 		
 		return false;
 	}
-	
-	private void loadDatabase() {
-		// database boilerplate and setup
-		try {
-			this.getDatabase().find(hardcorePlayer.class).findRowCount();
-		}
-		catch (PersistenceException ex) {
-            System.out.println(getDescription().getName() + " is setting up database");
-            installDDL();
-        }
-	}
-	
 
     @Override
     // this is basically boilerplate to make the database work right
@@ -259,6 +209,55 @@ public class AlmostHardcore extends JavaPlugin{
 		// picks a new random block at the surface of the world
 		Location randLocation = new Location(w, randCoord(), 0, randCoord());
 		return w.getHighestBlockAt(randLocation);
+	}
+	
+	private void loadDatabase() {
+		// database boilerplate and setup
+		try {
+			this.getDatabase().find(hardcorePlayer.class).findRowCount();
+		}
+		catch (PersistenceException ex) {
+            System.out.println(getDescription().getName() + " is setting up database");
+            installDDL();
+        }
+	}
+	
+	private void decomissionEnderChests(Player player){
+		List<hardcoreEnderChest> enderChestList = db.find(hardcoreEnderChest.class).where().eq("owner", player.getUniqueId()).findList();
+		hardcoreEnderChest[] enderChestArray = enderChestList.toArray(new hardcoreEnderChest[enderChestList.size()]);
+
+        for (hardcoreEnderChest endChest : enderChestArray){
+        	// turn all ender chests into regular chests
+        	World world = getServer().getWorld(endChest.getWorld());
+            int bX = (int)endChest.getX();
+        	int bY = (int)endChest.getY();
+        	int bZ = (int)endChest.getZ();
+        	Block chestBlock = world.getBlockAt(bX,bY,bZ);
+        	Material convertToMaterial = Material.TRAPPED_CHEST;
+        	if(world.getBlockAt(bX + 1, bY, bZ).getType() != Material.CHEST && world.getBlockAt(bX - 1, bY, bZ).getType() != Material.CHEST && world.getBlockAt(bX, bY, bZ + 1).getType() != Material.CHEST && world.getBlockAt(bX, bY, bZ - 1).getType() != Material.CHEST){
+        		convertToMaterial = Material.CHEST;
+        	}
+        	chestBlock.breakNaturally(null);
+        	chestBlock.setType(convertToMaterial);
+        }
+        
+        for (ItemStack item : player.getEnderChest().getContents()){
+        	// place each item from the player's end chest into one of the new chests at random
+        	if (item != null){
+            	hardcoreEnderChest endChest = enderChestArray[rnd.nextInt(enderChestArray.length)];
+            	World world = getServer().getWorld(endChest.getWorld());
+            	Chest chest = (Chest) world.getBlockAt((int)endChest.getX(),(int)endChest.getY(),(int)endChest.getZ()).getState();
+            	Inventory chestInv = chest.getInventory();
+            	chestInv.addItem(item);
+        	}
+        }
+        
+        for (hardcoreEnderChest endChest : enderChestList){
+        	// delete the old end chests from the database
+        	db.delete(endChest);
+        }
+		player.getEnderChest().clear();
+		
 	}
 
 	private void newRandomWorldSpawn(World w) {
