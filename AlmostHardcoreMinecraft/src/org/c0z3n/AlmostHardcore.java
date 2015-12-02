@@ -60,14 +60,14 @@ public class AlmostHardcore extends JavaPlugin{
 				hardcorePlayer hcp = db.find(hardcorePlayer.class).where().eq("id", player.getUniqueId()).findUnique();
 				hcp.addDeath();
 				hcp.setNightsAlive(0);
-//				updateGlobalSpawnLocation(player);
+				updateGlobalSpawnLocation(player);
 				ItemStack[] endChestInv = player.getEnderChest().getContents();
 				List<hardcoreEnderChest> enderChestList = db.find(hardcoreEnderChest.class).where().eq("owner", player.getUniqueId()).findList();
 				hardcoreEnderChest[] enderChestArray = enderChestList.toArray(new hardcoreEnderChest[enderChestList.size()]);
 
             	World world = getServer().getWorlds().get(0);
             	
-                for (hardcoreEnderChest endChest : enderChestList){
+                for (hardcoreEnderChest endChest : enderChestArray){
                 	// turn all ender chests into regular chests
                     int bX = (int)endChest.getX();
                 	int bY = (int)endChest.getY();
@@ -82,18 +82,18 @@ public class AlmostHardcore extends JavaPlugin{
                 }
                 
                 for (ItemStack item : endChestInv){
-                	int chosenChestIdx = rnd.nextInt(enderChestArray.length);
-                	hardcoreEnderChest endChest = enderChestArray[chosenChestIdx];
-                    int bX = (int)endChest.getX();
-                	int bY = (int)endChest.getY();
-                	int bZ = (int)endChest.getZ();
-                	Block chestBlock = world.getBlockAt(bX,bY,bZ);
-                	Chest chest = (Chest) chestBlock.getState();
-                	Inventory chestInv = chest.getInventory();
-                	chestInv.addItem(item);
+                	// place each item from the player's end chest into one of the new chests at random
+                	if (item != null){
+	                	int chosenChestIdx = rnd.nextInt(enderChestArray.length);
+	                	hardcoreEnderChest endChest = enderChestArray[chosenChestIdx];
+	                	Chest chest = (Chest) world.getBlockAt((int)endChest.getX(),(int)endChest.getY(),(int)endChest.getZ()).getState();
+	                	Inventory chestInv = chest.getInventory();
+	                	chestInv.addItem(item);
+                	}
                 }
                 
                 for (hardcoreEnderChest endChest : enderChestList){
+                	// delete the old end chests from the database
                 	db.delete(endChest);
                 }
                 
