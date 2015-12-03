@@ -104,7 +104,6 @@ public class AlmostHardcore extends JavaPlugin{
 						e.setCancelled(true);
 						return;
 					}
-					
 					hardcoreEnderChest newEndChest = new hardcoreEnderChest();
 					newEndChest.initFromPlaceEvent(e);
 					db.save(newEndChest);
@@ -128,7 +127,7 @@ public class AlmostHardcore extends JavaPlugin{
         
 		}, this);
 
-	    this.getConfig().addDefault("RandomSpawnWindowSize", 500000);
+	    this.getConfig().addDefault("RandomSpawnWindowSize", 150000);
 	    this.getConfig().addDefault("totalSpawnsGenerated", 0);
 	    this.getConfig().options().copyDefaults(true);
 	    this.getServer().setSpawnRadius(0);
@@ -229,9 +228,9 @@ public class AlmostHardcore extends JavaPlugin{
 		return false;
 	}
 	
-	private Block newRandomSurfaceBlock(World w) {	
+	private Block newRandomSurfaceBlock(World w, Location baseLocation) {	
 		// picks a new random block at the surface of the world
-		Location randLocation = new Location(w, randCoord(), 0, randCoord());
+		Location randLocation = new Location(w, (int) baseLocation.getX() + randCoord(), 0, (int) baseLocation.getZ() + randCoord());
 		return w.getHighestBlockAt(randLocation);
 	}
 	
@@ -285,8 +284,9 @@ public class AlmostHardcore extends JavaPlugin{
 		Biome[] badBiomes = {Biome.OCEAN, Biome.DEEP_OCEAN, Biome.FROZEN_OCEAN};
 		boolean badBiome = true;
 		Location newSpawn = null;
+		Location lastSpawn = getServer().getWorlds().get(0).getSpawnLocation();
 		while(badBiome == true){
-			Block newCandidateSpawnBlock = newRandomSurfaceBlock(w);
+			Block newCandidateSpawnBlock = newRandomSurfaceBlock(w, lastSpawn);
 			newSpawn = newCandidateSpawnBlock.getLocation();
 			badBiome = Arrays.asList(badBiomes).contains(newCandidateSpawnBlock.getBiome());
 		}
