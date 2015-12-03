@@ -205,6 +205,17 @@ public class AlmostHardcore extends JavaPlugin{
 		return rnd.nextInt(randWindowSize) - randWindowSize/2;	
 	}
 	
+	private boolean blockAdjoinsMaterial(Block b, Material m) {
+		int x = b.getX();
+		int y = b.getY();
+		int z = b.getZ();
+		World w = b.getWorld();
+		if (w.getBlockAt(x+1, y, z).getType() == m || w.getBlockAt(x-1, y, z).getType() == m || w.getBlockAt(x, y, z+1).getType() == m || w.getBlockAt(x, y, z-1).getType() == m){
+			return true;
+		}
+		return false;
+	}
+	
 	private Block newRandomSurfaceBlock(World w) {	
 		// picks a new random block at the surface of the world
 		Location randLocation = new Location(w, randCoord(), 0, randCoord());
