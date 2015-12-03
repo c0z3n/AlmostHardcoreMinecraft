@@ -98,10 +98,23 @@ public class AlmostHardcore extends JavaPlugin{
 			
 			@EventHandler
 			public void onBlockPlace(BlockPlaceEvent e) {
-				if ( e.getBlockPlaced().getType() == Material.ENDER_CHEST){
+				Block b = e.getBlockPlaced();
+				if ( b.getType() == Material.ENDER_CHEST){
+					if (blockAdjoinsMaterial(b, Material.CHEST) || blockAdjoinsMaterial(b, Material.ENDER_CHEST) || blockAdjoinsMaterial(b, Material.TRAPPED_CHEST)){
+						e.setCancelled(true);
+						return;
+					}
+					
 					hardcoreEnderChest newEndChest = new hardcoreEnderChest();
 					newEndChest.initFromPlaceEvent(e);
 					db.save(newEndChest);
+				}
+				
+				if ( b.getType() == Material.TRAPPED_CHEST || b.getType() == Material.CHEST){
+					if ( blockAdjoinsMaterial(b, Material.ENDER_CHEST)){
+						e.setCancelled(true);
+						return;
+					}
 				}
 			}
 			
@@ -244,12 +257,8 @@ public class AlmostHardcore extends JavaPlugin{
         	int bY = (int)endChest.getY();
         	int bZ = (int)endChest.getZ();
         	Block chestBlock = world.getBlockAt(bX,bY,bZ);
-        	Material convertToMaterial = Material.TRAPPED_CHEST;
-        	if(world.getBlockAt(bX + 1, bY, bZ).getType() != Material.CHEST && world.getBlockAt(bX - 1, bY, bZ).getType() != Material.CHEST && world.getBlockAt(bX, bY, bZ + 1).getType() != Material.CHEST && world.getBlockAt(bX, bY, bZ - 1).getType() != Material.CHEST){
-        		convertToMaterial = Material.CHEST;
-        	}
         	chestBlock.breakNaturally(null);
-        	chestBlock.setType(convertToMaterial);
+        	chestBlock.setType(Material.CHEST);
         }
         
         for (ItemStack item : player.getEnderChest().getContents()){
